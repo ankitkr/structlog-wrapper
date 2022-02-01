@@ -48,6 +48,7 @@ def receiver_task_received(request, *args, **kwargs):
         "task_received",
         task_id=request.task_id,
         task_name=request.task_name,
+        task_status=request.task.AsyncResult(request.id).state,
         parent_task_id=request.parent_id,
     )
 
@@ -76,6 +77,8 @@ def receiver_task_success(result=None, **kwargs):
         task_duration = time.monotonic() - task_start_time
         threadlocal_context["task_duration"] = str(task_duration) + "s"
 
+    task = kwargs['sender']
+    threadlocal_context["task_status"] = task.AsyncResult(task.request.id).state
     with structlog.threadlocal.tmp_bind(logger):
         signals.pre_task_succeeded.send(
             sender=receiver_task_success, logger=logger, result=result
