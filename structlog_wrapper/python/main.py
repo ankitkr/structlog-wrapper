@@ -1,9 +1,11 @@
 import logging
 import logging.config
 import socket
+import sys
 
 import structlog
 from structlog.processors import CallsiteParameter
+from structlog_sentry import SentryJsonProcessor
 
 
 def _add_hostname(_, __, event_dict):
@@ -57,6 +59,17 @@ class EnvFilter(logging.Filter):
 
 
 def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file=None):
+    if not structlog.is_configured():
+        def _make_excepthook(old_excepthook):
+            def log_unhandled_exception(excType, excValue, traceback):
+                logger = structlog.getLogger()
+                logger.error("Logging an uncaught exception",
+                             exc_info=(excType, excValue, traceback), skip_sentry=True)
+                return old_excepthook(excType, excValue, traceback)
+            return log_unhandled_exception
+
+        sys.excepthook = _make_excepthook(sys.excepthook)
+
     pre_chain = [
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -172,6 +185,7 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
             }),
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M.%S"),
+            SentryJsonProcessor(level=logging.ERROR),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),

@@ -4,6 +4,7 @@ import socket
 
 import structlog
 from structlog.processors import CallsiteParameter
+from structlog_sentry import SentryJsonProcessor
 
 from .processors import inject_context_dict
 
@@ -175,6 +176,7 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
             }),
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M.%S"),
+            SentryJsonProcessor(level=logging.ERROR),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.UnicodeDecoder(),
