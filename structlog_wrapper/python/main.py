@@ -58,7 +58,7 @@ class EnvFilter(logging.Filter):
         return True
 
 
-def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file=None):
+def configure_struct_logging(app_name, app_type, env, log_level="INFO", enable_syslog=False, enable_log_file=False):
     if not structlog.is_configured():
         def _make_excepthook(old_excepthook):
             def log_unhandled_exception(excType, excValue, traceback):
@@ -86,6 +86,12 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
         structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M.%S"),
     ]
 
+    handlers = ["console"]
+    if enable_syslog:
+        handlers.append("sysLog")
+    if enable_log_file:
+        handlers.append("jsonFile")
+
     logging.config.dictConfig({
         "version": 1,
         "disable_existing_loggers": False,
@@ -102,7 +108,7 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
                 ],
                 "foreign_pre_chain": pre_chain,
             },
-            "colored": {
+            "plain": {
                 "()": structlog.stdlib.ProcessorFormatter,
                 "processors": [
                     _add_hostname,
@@ -110,7 +116,7 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
                     _add_application_type,
                     _add_environment,
                     structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                    structlog.dev.ConsoleRenderer(colors=True),
+                    structlog.dev.ConsoleRenderer(),
                 ],
                 "foreign_pre_chain": pre_chain,
             }
@@ -133,17 +139,29 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
             "console": {
                 "level": log_level,
                 "class": "logging.StreamHandler",
-                "formatter": "colored",
+                "formatter": "json_formatter",
                 "filters": [
                     "app",
                     "app_type",
                     "env"
                 ]
             },
-            "json_file": {
+            "sysLog": {
+                "level": log_level,
+                "class": "logging.handlers.SysLogHandler",
+                "address": "/dev/log",
+                "facility": "local6",
+                "formatter": "plain",
+                "filters": [
+                    "app",
+                    "app_type",
+                    "env"
+                ]
+            },
+            "jsonFile": {
                 "level": log_level,
                 "class": "logging.handlers.WatchedFileHandler",
-                "filename": log_file if log_file else "logs/{}.log".format(app_name),
+                "filename": "logs/{}.log".format(app_name),
                 "formatter": "json_formatter",
                 "filters": [
                     "app",
@@ -154,17 +172,17 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
         },
         "loggers": {
             "rq": {
-                "handlers": ["console", "json_file"],
+                "handlers": handlers,
                 "level": log_level,
                 "propagate": False
             },
             "foreign_logger": {
-                "handlers": ["console", "json_file"],
+                "handlers": handlers,
                 "level": log_level,
                 "propagate": False
             },
             "": {
-                "handlers": ["console", "json_file"],
+                "handlers": handlers,
                 "level": log_level,
             }
         },
@@ -196,4 +214,3 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
-
