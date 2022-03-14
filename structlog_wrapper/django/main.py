@@ -10,7 +10,7 @@ from .processors import inject_context_dict
 
 
 def _add_hostname(_, __, event_dict):
-    event_dict['hostname'] = socket.gethostname()
+    event_dict['host'] = socket.gethostname()
     return event_dict
 
 
