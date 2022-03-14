@@ -10,7 +10,7 @@ from .processors import inject_context_dict
 
 
 def _add_hostname(_, __, event_dict):
-    event_dict['host'] = socket.gethostname()
+    event_dict['hostname'] = socket.gethostname()
     return event_dict
 
 
@@ -59,7 +59,7 @@ class EnvFilter(logging.Filter):
         return True
 
 
-def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file=None):
+def configure_struct_logging(app_name, app_type, env, log_level="INFO", enable_log_file=False):
     pre_chain = [
         inject_context_dict,
         structlog.stdlib.add_logger_name,
@@ -76,6 +76,10 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M.%S"),
     ]
+
+    handlers = ["console"]
+    if enable_log_file:
+        handlers.append("jsonFile")
 
     logging.config.dictConfig({
         "version": 1,
@@ -131,10 +135,10 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
                     "env"
                 ]
             },
-            "json_file": {
+            "jsonFile": {
                 "level": log_level,
                 "class": "logging.handlers.WatchedFileHandler",
-                "filename": log_file if log_file else "logs/{}.log".format(app_name),
+                "filename": "logs/{}.log".format(app_name),
                 "formatter": "json_formatter",
                 "filters": [
                     "app",
@@ -145,17 +149,17 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", log_file
         },
         "loggers": {
             "django_structlog": {
-                "handlers": ["console", "json_file"],
+                "handlers": handlers,
                 "level": log_level,
                 "propagate": False
             },
             "foreign_logger": {
-                "handlers": ["console", "json_file"],
+                "handlers": handlers,
                 "level": log_level,
                 "propagate": False
             },
             "": {
-                "handlers": ["console", "json_file"],
+                "handlers": handlers,
                 "level": log_level,
             }
         },

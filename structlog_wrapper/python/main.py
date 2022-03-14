@@ -9,7 +9,7 @@ from structlog_sentry import SentryJsonProcessor
 
 
 def _add_hostname(_, __, event_dict):
-    event_dict['host'] = socket.gethostname()
+    event_dict['hostname'] = socket.gethostname()
     return event_dict
 
 
@@ -58,7 +58,7 @@ class EnvFilter(logging.Filter):
         return True
 
 
-def configure_struct_logging(app_name, app_type, env, log_level="INFO", enable_syslog=False, enable_log_file=False):
+def configure_struct_logging(app_name, app_type, env, log_level="INFO", enable_log_file=False):
     if not structlog.is_configured():
         def _make_excepthook(old_excepthook):
             def log_unhandled_exception(excType, excValue, traceback):
@@ -87,8 +87,6 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", enable_s
     ]
 
     handlers = ["console"]
-    if enable_syslog:
-        handlers.append("sysLog")
     if enable_log_file:
         handlers.append("jsonFile")
 
@@ -140,18 +138,6 @@ def configure_struct_logging(app_name, app_type, env, log_level="INFO", enable_s
                 "level": log_level,
                 "class": "logging.StreamHandler",
                 "formatter": "json_formatter",
-                "filters": [
-                    "app",
-                    "app_type",
-                    "env"
-                ]
-            },
-            "sysLog": {
-                "level": log_level,
-                "class": "logging.handlers.SysLogHandler",
-                "address": "/dev/log",
-                "facility": "local6",
-                "formatter": "plain",
                 "filters": [
                     "app",
                     "app_type",
