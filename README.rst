@@ -79,7 +79,7 @@ Add CeleryMiddleWare in your web app. In your settings.py
     MIDDLEWARE = [
         # ...
         'structlog_wrapper.django.middlewares.RequestMiddleware',
-        'structlog_wrapper.django.middlewares.CeleryMiddleware',
+        'structlog_wrapper.django.celery.middlewares.CeleryMiddleware',
     ]
 
 Initialize Celery Worker with DjangoStructLogInitStep.
